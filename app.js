@@ -10,13 +10,20 @@ const destinations = [
     { name: "Amsterdam", lng: 4.9041, lat: 52.3676, emoji: "🚲", color: "#FF5722" }
 ];
 
-const legMeta = [
-    { key: 'flight', color: '#4CAF50', dash: [4, 4] },
-    { key: 'Venice → Lucerne', color: '#2196F3', dash: [1, 0] },
-    { key: 'Lucerne → Lauterbrunnen', color: '#00BCD4', dash: [1, 0] },
-    { key: 'Lauterbrunnen → Paris', color: '#E91E63', dash: [1, 0] },
-    { key: 'Paris → Bruges', color: '#9C27B0', dash: [1, 0] },
-    { key: 'Bruges → Amsterdam', color: '#FF5722', dash: [1, 0] }
+// Detailed segments for Venice → Lucerne (Gotthard Panorama Express)
+const gotthardSegments = [
+    { key: 'Venice → Milan', color: '#1565C0', width: 4, label: '🚄 High-Speed Train' },
+    { key: 'Milan → Lugano', color: '#1976D2', width: 4, label: '🚂 Train to Lugano' },
+    { key: 'Lugano → Flüelen (Gotthard)', color: '#D32F2F', width: 5, label: '🚂 Gotthard Panorama Express' },
+    { key: 'Flüelen → Lucerne (Boat)', color: '#0288D1', width: 4, label: '⛴️ Lake Lucerne Cruise', dash: [6, 4] }
+];
+
+// Other legs (from routes.json)
+const otherLegs = [
+    { key: 'Lucerne → Lauterbrunnen', color: '#00BCD4', width: 4 },
+    { key: 'Lauterbrunnen → Paris', color: '#E91E63', width: 4 },
+    { key: 'Paris → Bruges', color: '#9C27B0', width: 4 },
+    { key: 'Bruges → Amsterdam', color: '#FF5722', width: 4 }
 ];
 
 const map = new mapboxgl.Map({
@@ -44,7 +51,7 @@ map.on('style.load', async () => {
         new mapboxgl.Marker({ element: el }).setLngLat([d.lng, d.lat]).addTo(map);
     });
 
-    // Flight arc (Austin → Venice)
+    // Flight arc
     const arc = [];
     for (let i = 0; i <= 100; i++) {
         const t = i / 100;
@@ -53,22 +60,39 @@ map.on('style.load', async () => {
     map.addSource('flight', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: arc } } });
     map.addLayer({ id: 'flight', type: 'line', source: 'flight', paint: { 'line-color': '#4CAF50', 'line-width': 2.5, 'line-opacity': 0.7, 'line-dasharray': [4, 4] }, layout: { 'line-cap': 'round' } });
 
-    // Real train routes
-    const resp = await fetch('routes.json');
-    const routes = await resp.json();
-    const routeNames = Object.keys(routes);
+    // Load Gotthard detailed routes
+    const gotthardResp = await fetch('gotthard-routes.json');
+    const gotthardRoutes = await gotthardResp.json();
 
-    routeNames.forEach((name, i) => {
-        const meta = legMeta[i + 1];
-        map.addSource(`leg-${i}`, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: routes[name] } } });
+    gotthardSegments.forEach((seg, i) => {
+        const coords = gotthardRoutes[seg.key];
+        if (!coords) return;
+        const id = `gotthard-${i}`;
+        map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
         map.addLayer({
-            id: `leg-${i}`, type: 'line', source: `leg-${i}`,
-            paint: { 'line-color': meta.color, 'line-width': 4, 'line-opacity': 0.75 },
+            id, type: 'line', source: id,
+            paint: { 'line-color': seg.color, 'line-width': seg.width, 'line-opacity': 0.8, ...(seg.dash ? { 'line-dasharray': seg.dash } : {}) },
             layout: { 'line-cap': 'round', 'line-join': 'round' }
         });
     });
 
-    // Fit to show all destinations
+    // Load other legs
+    const routesResp = await fetch('routes.json');
+    const routes = await routesResp.json();
+
+    otherLegs.forEach((leg, i) => {
+        const coords = routes[leg.key];
+        if (!coords) return;
+        const id = `leg-${i}`;
+        map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
+        map.addLayer({
+            id, type: 'line', source: id,
+            paint: { 'line-color': leg.color, 'line-width': leg.width, 'line-opacity': 0.75 },
+            layout: { 'line-cap': 'round', 'line-join': 'round' }
+        });
+    });
+
+    // Fit to show all
     const bounds = new mapboxgl.LngLatBounds();
     destinations.forEach(d => bounds.extend([d.lng, d.lat]));
     map.fitBounds(bounds, { padding: 60, pitch: 40, duration: 2000 });
@@ -89,7 +113,6 @@ const scrollObs = new IntersectionObserver((entries) => {
 }, { threshold: 0.3 });
 document.querySelectorAll('.destination').forEach(el => scrollObs.observe(el));
 
-// Full view button
 document.getElementById('fullview-btn').addEventListener('click', () => {
     const bounds = new mapboxgl.LngLatBounds();
     destinations.forEach(d => bounds.extend([d.lng, d.lat]));
