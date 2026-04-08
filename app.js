@@ -87,3 +87,9 @@ const observer = new IntersectionObserver((entries) => {
     });
 }, { threshold: 0.3 });
 document.querySelectorAll('.destination').forEach(el => observer.observe(el));
+
+// Roadmap scroll animation
+const roadmapObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.2 });
+document.querySelectorAll('.roadmap-leg').forEach(el => roadmapObs.observe(el));
