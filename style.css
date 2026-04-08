@@ -59,13 +59,12 @@ body {
 .map-section {
     position: sticky;
     top: 0;
-    height: 50vh;
+    height: 80vh;
     z-index: 10;
 }
 #map {
     height: 100%;
     width: 100%;
-    filter: saturate(0.8) brightness(0.9);
 }
 .map-legend {
     position: absolute;
@@ -232,6 +231,16 @@ footer {
 .city-marker.active .marker-label {
     background: #c9a84c;
     color: #fff;
+}
+
+/* Animated vehicle */
+.vehicle-icon {
+    z-index: 2000 !important;
+}
+.vehicle {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    transition: transform 0.15s linear;
 }
 
 /* Responsive */
