@@ -16,11 +16,11 @@ const map = new mapboxgl.Map({
     center: [-20, 40], zoom: 2.5, pitch: 0, bearing: 0, projection: 'globe'
 });
 
-// Simple clean vehicle marker — like Google Maps blue dot/arrow
+// Vehicle — simple clean icon
 const vehicleEl = document.createElement('div');
 vehicleEl.className = 'gmap-vehicle';
 vehicleEl.innerHTML = '<div class="gmap-icon">✈️</div>';
-const vehicleMarker = new mapboxgl.Marker({ element: vehicleEl, anchor: 'center', rotationAlignment: 'map' })
+const vehicleMarker = new mapboxgl.Marker({ element: vehicleEl, anchor: 'center' })
     .setLngLat([0, 0]).addTo(map);
 vehicleEl.style.display = 'none';
 
@@ -29,7 +29,6 @@ map.on('style.load', () => {
     map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
     map.setFog({ color: 'rgb(220,230,240)', 'high-color': 'rgb(180,200,230)', 'horizon-blend': 0.05, 'space-color': 'rgb(15,15,30)', 'star-intensity': 0.3 });
 
-    // City markers
     destinations.forEach((d, i) => {
         const el = document.createElement('div');
         el.className = 'city-marker-3d';
@@ -41,7 +40,6 @@ map.on('style.load', () => {
         new mapboxgl.Marker({ element: el }).setLngLat([d.lng, d.lat]).addTo(map);
     });
 
-    // Route layers
     map.addSource('route-drawn', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
     map.addLayer({ id: 'route-glow', type: 'line', source: 'route-drawn', paint: { 'line-color': '#c9a84c', 'line-width': 8, 'line-opacity': 0.2, 'line-blur': 6 } });
     map.addLayer({ id: 'route-line', type: 'line', source: 'route-drawn', paint: { 'line-color': '#c9a84c', 'line-width': 3.5, 'line-opacity': 0.9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
@@ -49,7 +47,7 @@ map.on('style.load', () => {
     setTimeout(runJourney, 1500);
 });
 
-// --- Build dense route ---
+// --- Build route with LOTS of points for smooth interpolation ---
 function lerp(a, b, t) { return a + (b - a) * t; }
 
 function buildRoute() {
@@ -57,12 +55,12 @@ function buildRoute() {
     const legStarts = [0];
     for (let i = 0; i < destinations.length - 1; i++) {
         const f = destinations[i], t = destinations[i + 1];
-        const steps = i === 0 ? 300 : 200;
+        const steps = i === 0 ? 500 : 400;
         for (let s = 0; s <= steps; s++) {
             const frac = s / steps;
             let lat = lerp(f.lat, t.lat, frac);
             let lng = lerp(f.lng, t.lng, frac);
-            if (i === 0) lat += Math.sin(frac * Math.PI) * 8; // arc for flight
+            if (i === 0) lat += Math.sin(frac * Math.PI) * 8;
             pts.push([lng, lat]);
         }
         legStarts.push(pts.length - 1);
@@ -70,115 +68,134 @@ function buildRoute() {
     return { pts, legStarts };
 }
 
-function bearing(a, b) { return Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI; }
+function angleDeg(a, b) { return Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI; }
 
 const progressBar = document.getElementById('progress-bar');
 const currentLeg = document.getElementById('current-leg');
 function showLeg(t) { currentLeg.textContent = t; currentLeg.classList.add('visible'); }
 function hideLeg() { currentLeg.classList.remove('visible'); }
 
-// --- Smooth animation using requestAnimationFrame ---
 let animId = null;
 
 function runJourney() {
     const { pts, legStarts } = buildRoute();
-    const drawn = [];
     const total = pts.length;
-    let idx = 0;
-    let legIdx = 0;
-    let lastTime = 0;
+    const drawn = [];
 
-    // Speed: ms per point. Lower = faster
-    const flightSpeed = 12;  // fast flight
-    const trainSpeed = 22;   // smooth train
+    // Duration in seconds for the ENTIRE journey
+    const flightDuration = 15;  // 15 seconds for transatlantic
+    const trainLegDuration = 12; // 12 seconds per train leg
+
+    // Calculate total duration and speed per point
+    const flightPts = legStarts[1];
+    const trainPts = total - flightPts;
+    const trainLegs = destinations.length - 2;
+    const totalDuration = (flightDuration + trainLegDuration * trainLegs) * 1000; // ms
+
+    let progress = 0; // 0 to 1
+    let startTime = null;
+    let legIdx = 0;
+    let lastDrawnIdx = -1;
 
     vehicleEl.style.display = '';
+    vehicleEl.querySelector('.gmap-icon').textContent = '✈️';
 
-    // Initial view
     map.flyTo({ center: [destinations[0].lng, destinations[0].lat], zoom: 4, pitch: 30, bearing: 30, duration: 2000, essential: true });
 
-    function setIcon(emoji) {
-        vehicleEl.querySelector('.gmap-icon').textContent = emoji;
+    function getIdxFromProgress(p) {
+        // Map progress 0-1 to point index
+        return Math.min(Math.floor(p * (total - 1)), total - 1);
+    }
+
+    function getSubProgress(p, idx) {
+        // Get fractional position between idx and idx+1
+        const exact = p * (total - 1);
+        return exact - Math.floor(exact);
     }
 
     function animate(timestamp) {
-        if (!lastTime) lastTime = timestamp;
-        const isFlight = legIdx === 0;
-        const speed = isFlight ? flightSpeed : trainSpeed;
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        progress = Math.min(elapsed / totalDuration, 1);
 
-        if (timestamp - lastTime < speed) {
-            animId = requestAnimationFrame(animate);
-            return;
-        }
-        lastTime = timestamp;
+        const idx = getIdxFromProgress(progress);
+        const subT = getSubProgress(progress, idx);
 
-        if (idx >= total) {
-            // Done
-            vehicleEl.style.display = 'none';
-            hideLeg();
-            progressBar.style.width = '100%';
-            const bounds = new mapboxgl.LngLatBounds();
-            destinations.forEach(d => bounds.extend([d.lng, d.lat]));
-            map.fitBounds(bounds, { padding: 60, pitch: 40, bearing: 0, duration: 3000 });
-            return;
-        }
-
+        // Interpolate between current and next point for sub-pixel smoothness
         const pt = pts[idx];
-        drawn.push(pt);
+        let smoothPt;
+        if (idx < total - 1) {
+            const next = pts[idx + 1];
+            smoothPt = [lerp(pt[0], next[0], subT), lerp(pt[1], next[1], subT)];
+        } else {
+            smoothPt = pt;
+        }
 
         // Update leg
-        while (legIdx < legStarts.length - 1 && idx >= legStarts[legIdx + 1]) legIdx++;
+        const newLeg = legStarts.findIndex((s, i) => i < legStarts.length - 1 && idx >= s && idx < legStarts[i + 1]);
+        if (newLeg >= 0 && newLeg !== legIdx) {
+            legIdx = newLeg;
+            const isFlight = legIdx === 0;
+            vehicleEl.querySelector('.gmap-icon').textContent = isFlight ? '✈️' : '🚂';
+        }
+        const isFlight = legIdx === 0;
         const from = destinations[legIdx], to = destinations[legIdx + 1];
 
-        // Vehicle icon
+        // Leg label
         if (idx === 0 || idx === legStarts[legIdx]) {
-            setIcon(isFlight ? '✈️' : '🚂');
             showLeg(isFlight ? `✈️ ${from.name} → ${to.name}` : `🚂 ${from.name} → ${to.name}`);
         }
 
-        // Move vehicle smoothly
-        vehicleMarker.setLngLat(pt);
+        // Move vehicle (sub-pixel smooth)
+        vehicleMarker.setLngLat(smoothPt);
 
-        // Rotate toward next point
-        if (idx < total - 1) {
-            const deg = bearing(pt, pts[idx + 1]);
-            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${-deg}deg)`;
+        // Rotate toward direction of travel
+        if (idx < total - 2) {
+            const lookAhead = Math.min(idx + 10, total - 1);
+            const angle = angleDeg(pt, pts[lookAhead]);
+            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${-angle}deg)`;
         }
 
-        // Update route line every 3 frames
-        if (idx % 3 === 0) {
+        // Draw route trail (add points we've passed)
+        if (idx > lastDrawnIdx) {
+            for (let i = lastDrawnIdx + 1; i <= idx; i++) drawn.push(pts[i]);
+            lastDrawnIdx = idx;
             map.getSource('route-drawn').setData({
                 type: 'Feature',
                 geometry: { type: 'LineString', coordinates: drawn }
             });
         }
 
-        // Camera: smooth follow every 3 frames
-        if (idx % 3 === 0) {
-            const lookAhead = Math.min(idx + 40, total - 1);
-            const ahead = pts[lookAhead];
-            const b = bearing(pt, ahead);
-            const zoom = isFlight
-                ? lerp(3, 5.5, idx / legStarts[1])
-                : 10;
-            map.easeTo({
-                center: pt,
-                zoom,
-                pitch: isFlight ? 35 : 55,
-                bearing: b * 0.35,
-                duration: speed * 3,
-                easing: t => t
-            });
-        }
+        // Camera: smooth continuous follow
+        const lookAheadCam = Math.min(idx + 60, total - 1);
+        const camTarget = pts[lookAheadCam];
+        const camBearing = angleDeg(smoothPt, camTarget);
+        const zoom = isFlight ? lerp(3, 5.5, idx / legStarts[1]) : 10;
 
-        progressBar.style.width = `${(idx / total) * 100}%`;
-        idx++;
-        animId = requestAnimationFrame(animate);
+        map.easeTo({
+            center: smoothPt,
+            zoom,
+            pitch: isFlight ? 35 : 55,
+            bearing: camBearing * 0.3,
+            duration: 100,
+            easing: t => t
+        });
+
+        progressBar.style.width = `${progress * 100}%`;
+
+        if (progress < 1) {
+            animId = requestAnimationFrame(animate);
+        } else {
+            // Done
+            vehicleEl.style.display = 'none';
+            hideLeg();
+            const bounds = new mapboxgl.LngLatBounds();
+            destinations.forEach(d => bounds.extend([d.lng, d.lat]));
+            map.fitBounds(bounds, { padding: 60, pitch: 40, bearing: 0, duration: 3000 });
+        }
     }
 
-    setTimeout(() => {
-        animId = requestAnimationFrame(animate);
-    }, 2500);
+    setTimeout(() => { animId = requestAnimationFrame(animate); }, 2500);
 }
 
 // --- Controls ---
