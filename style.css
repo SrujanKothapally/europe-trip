@@ -71,15 +71,16 @@ body {
     position: absolute;
     bottom: 1rem;
     left: 1rem;
-    background: rgba(0,0,0,0.7);
+    background: rgba(255,255,255,0.9);
     padding: 0.5rem 1rem;
     border-radius: 8px;
     font-size: 0.8rem;
-    color: #aaa;
+    color: #555;
     z-index: 1000;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 .legend-dot {
     width: 10px;
@@ -197,20 +198,40 @@ footer {
     50% { transform: translateY(8px); }
 }
 
-/* Leaflet custom markers */
-.custom-marker {
-    background: #c9a84c;
-    border: 3px solid #fff;
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    box-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+/* City markers */
+.city-marker {
+    text-align: center;
+    transition: transform 0.3s ease;
+    cursor: pointer;
 }
-.custom-marker.active {
-    background: #fff;
-    border-color: #c9a84c;
-    transform: scale(1.4);
-    box-shadow: 0 0 20px rgba(201, 168, 76, 0.8);
+.city-marker:hover, .city-marker.active {
+    transform: scale(1.2);
+    z-index: 1000 !important;
+}
+.marker-pin {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    transition: transform 0.3s ease;
+}
+.city-marker.active .marker-pin {
+    transform: scale(1.3);
+}
+.marker-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #333;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    margin-top: 2px;
+    display: inline-block;
+}
+.city-marker.active .marker-label {
+    background: #c9a84c;
+    color: #fff;
 }
 
 /* Responsive */
