@@ -42,10 +42,8 @@ const destinations = [
 // --- Map ---
 const map = L.map('map', { zoomControl: false, scrollWheelZoom: true, dragging: true, attributionControl: false });
 
-// Watercolor-style warm tiles
-L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg', { maxZoom: 16 }).addTo(map);
-// Add labels on top of watercolor
-L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png', { maxZoom: 18, opacity: 0.6 }).addTo(map);
+// Warm illustrated-style map
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(map);
 
 const fullBounds = L.latLngBounds(destinations.map(d => [d.lat, d.lng]));
 map.fitBounds(fullBounds, { padding: [50, 50] });
