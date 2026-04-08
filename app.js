@@ -141,16 +141,17 @@ function animateJourney(coords, legBounds) {
         // Move vehicle
         marker.setLngLat(pos);
 
-        // Rotate
-        const ahead = Math.min(idx + 8, total - 1);
-        vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angleDeg(pt, coords[ahead])}deg)`;
-
-        // Camera (throttled)
+        // Camera (throttled) + rotate vehicle only when camera updates
         if (ts - lastCamTime > 800) {
             lastCamTime = ts;
             const camAhead = Math.min(idx + 20, total - 1);
             const bearing = angleDeg(pos, coords[camAhead]);
             const isFlight = meta.type === 'flight';
+
+            // Set vehicle direction (far look-ahead = stable, no jitter)
+            const dirAhead = Math.min(idx + 50, total - 1);
+            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angleDeg(pt, coords[dirAhead])}deg)`;
+
             map.easeTo({
                 center: pos,
                 zoom: isFlight ? lerp(3, 5, (idx / legBounds[1])) : 10,
