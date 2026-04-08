@@ -11,31 +11,21 @@ const destinations = [
 ];
 
 const legMeta = [
-    { name: 'Austin → Venice', type: 'flight', color: '#4CAF50', label: '✈️ Austin → Venice' },
-    { name: 'Venice → Lucerne', type: 'train', color: '#2196F3', label: '🚂 Gotthard Panorama Express' },
-    { name: 'Lucerne → Lauterbrunnen', type: 'train', color: '#00BCD4', label: '🚂 Lucerne → Lauterbrunnen' },
-    { name: 'Lauterbrunnen → Paris', type: 'train', color: '#E91E63', label: '🚂 Lauterbrunnen → Paris' },
-    { name: 'Paris → Bruges', type: 'train', color: '#9C27B0', label: '🚂 Paris → Bruges' },
-    { name: 'Bruges → Amsterdam', type: 'train', color: '#FF5722', label: '🚂 Bruges → Amsterdam' }
+    { key: 'flight', color: '#4CAF50', dash: [4, 4] },
+    { key: 'Venice → Lucerne', color: '#2196F3', dash: [1, 0] },
+    { key: 'Lucerne → Lauterbrunnen', color: '#00BCD4', dash: [1, 0] },
+    { key: 'Lauterbrunnen → Paris', color: '#E91E63', dash: [1, 0] },
+    { key: 'Paris → Bruges', color: '#9C27B0', dash: [1, 0] },
+    { key: 'Bruges → Amsterdam', color: '#FF5722', dash: [1, 0] }
 ];
 
 const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/outdoors-v12',
-    center: [-20, 40], zoom: 2.5, pitch: 0, bearing: 0, projection: 'globe'
+    center: [5, 47], zoom: 4, pitch: 40, bearing: 0, projection: 'globe'
 });
 
 function lerp(a, b, t) { return a + (b - a) * t; }
-function angleDeg(a, b) { return (Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI + 360) % 360; }
-
-function buildFlightArc() {
-    const f = destinations[0], t = destinations[1], pts = [];
-    for (let i = 0; i <= 200; i++) {
-        const frac = i / 200;
-        pts.push([lerp(f.lng, t.lng, frac), lerp(f.lat, t.lat, frac) + Math.sin(frac * Math.PI) * 8]);
-    }
-    return pts;
-}
 
 map.on('style.load', async () => {
     map.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
@@ -48,144 +38,43 @@ map.on('style.load', async () => {
         el.className = 'city-marker-3d';
         el.innerHTML = `<div class="marker-dot-3d" style="background:${d.color}">${d.emoji}</div><div class="marker-name-3d">${d.name}</div>`;
         el.addEventListener('click', () => {
-            map.flyTo({ center: [d.lng, d.lat], zoom: 14, pitch: 60, duration: 2000 });
+            map.flyTo({ center: [d.lng, d.lat], zoom: 13, pitch: 60, duration: 2000 });
             document.querySelector(`.destination[data-index="${i}"]`)?.scrollIntoView({ behavior: 'smooth' });
         });
         new mapboxgl.Marker({ element: el }).setLngLat([d.lng, d.lat]).addTo(map);
     });
 
-    // Load real routes
+    // Flight arc (Austin → Venice)
+    const arc = [];
+    for (let i = 0; i <= 100; i++) {
+        const t = i / 100;
+        arc.push([lerp(-97.7431, 12.3155, t), lerp(30.2672, 45.4408, t) + Math.sin(t * Math.PI) * 8]);
+    }
+    map.addSource('flight', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: arc } } });
+    map.addLayer({ id: 'flight', type: 'line', source: 'flight', paint: { 'line-color': '#4CAF50', 'line-width': 2.5, 'line-opacity': 0.7, 'line-dasharray': [4, 4] }, layout: { 'line-cap': 'round' } });
+
+    // Real train routes
     const resp = await fetch('routes.json');
     const routes = await resp.json();
+    const routeNames = Object.keys(routes);
 
-    // Build full coordinate array
-    const flightArc = buildFlightArc();
-    const allLegs = [flightArc];
-    const legNames = Object.keys(routes);
-    legNames.forEach(name => allLegs.push(routes[name]));
-
-    // Flatten into one array for animation
-    let allCoords = [...flightArc];
-    const legBounds = [0, flightArc.length];
-    legNames.forEach(name => {
-        const pts = routes[name];
-        allCoords = allCoords.concat(pts.slice(1));
-        legBounds.push(allCoords.length);
-    });
-
-    // Draw each leg as colored line
-    allLegs.forEach((coords, i) => {
-        const meta = legMeta[i];
-        map.addSource(`leg-${i}`, {
-            type: 'geojson',
-            data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }
-        });
+    routeNames.forEach((name, i) => {
+        const meta = legMeta[i + 1];
+        map.addSource(`leg-${i}`, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: routes[name] } } });
         map.addLayer({
             id: `leg-${i}`, type: 'line', source: `leg-${i}`,
-            paint: {
-                'line-color': meta.color,
-                'line-width': meta.type === 'flight' ? 2.5 : 4,
-                'line-opacity': 0.75,
-                'line-dasharray': meta.type === 'flight' ? [4, 4] : [1, 0]
-            },
+            paint: { 'line-color': meta.color, 'line-width': 4, 'line-opacity': 0.75 },
             layout: { 'line-cap': 'round', 'line-join': 'round' }
         });
     });
 
-    // Animate
-    setTimeout(() => animateJourney(allCoords, legBounds), 1500);
-});
-
-const progressBar = document.getElementById('progress-bar');
-const currentLeg = document.getElementById('current-leg');
-function showLeg(t) { currentLeg.textContent = t; currentLeg.classList.add('visible'); }
-function hideLeg() { currentLeg.classList.remove('visible'); }
-
-function animateJourney(coords, legBounds) {
-    const total = coords.length;
-    const duration = 120000; // 2 minutes
-    let start = null;
-
-    const vehicleEl = document.createElement('div');
-    vehicleEl.className = 'gmap-vehicle';
-    vehicleEl.innerHTML = '<div class="gmap-icon">✈️</div>';
-    const marker = new mapboxgl.Marker({ element: vehicleEl, anchor: 'center' })
-        .setLngLat(coords[0]).addTo(map);
-
-    let lastCamTime = 0;
-
-    function getLeg(idx) {
-        for (let i = legBounds.length - 1; i >= 0; i--) {
-            if (idx >= legBounds[i]) return i;
-        }
-        return 0;
-    }
-
-    let prevLegIdx = -1;
-
-    function animate(ts) {
-        if (!start) start = ts;
-        const progress = Math.min((ts - start) / duration, 1);
-        const exact = progress * (total - 1);
-        const idx = Math.floor(exact);
-        const frac = exact - idx;
-
-        const pt = coords[idx];
-        const next = coords[Math.min(idx + 1, total - 1)];
-        const pos = [lerp(pt[0], next[0], frac), lerp(pt[1], next[1], frac)];
-
-        // Leg info
-        const legIdx = getLeg(idx);
-        const meta = legMeta[legIdx];
-
-        // Only update icon + label + rotation when leg changes
-        if (legIdx !== prevLegIdx) {
-            prevLegIdx = legIdx;
-            showLeg(meta.label);
-            vehicleEl.querySelector('.gmap-icon').textContent = meta.type === 'flight' ? '✈️' : '🚂';
-            // Set rotation to face the END of this leg
-            const legEnd = Math.min(legBounds[legIdx + 1] || total - 1, total - 1);
-            const angle = angleDeg(pt, coords[legEnd]);
-            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angle}deg)`;
-        }
-
-        // Move vehicle — this is the ONLY thing that updates every frame
-        marker.setLngLat(pos);
-
-        progressBar.style.width = `${progress * 100}%`;
-
-        if (progress < 1) {
-            requestAnimationFrame(animate);
-        } else {
-            marker.remove();
-            hideLeg();
-            const bounds = new mapboxgl.LngLatBounds();
-            destinations.forEach(d => bounds.extend([d.lng, d.lat]));
-            map.fitBounds(bounds, { padding: 60, pitch: 40, duration: 3000 });
-        }
-    }
-
-    // Show full route at start, no camera movement during animation
+    // Fit to show all destinations
     const bounds = new mapboxgl.LngLatBounds();
     destinations.forEach(d => bounds.extend([d.lng, d.lat]));
-    map.fitBounds(bounds, { padding: 60, pitch: 40, bearing: 0, duration: 2000 });
-    setTimeout(() => requestAnimationFrame(animate), 2500);
-
-    document.getElementById('replay-btn').onclick = () => {
-        marker.setLngLat(coords[0]).addTo(map);
-        start = null; lastCamTime = 0;
-        progressBar.style.width = '0%';
-        map.flyTo({ center: coords[0], zoom: 4, pitch: 30, bearing: 30, duration: 1500 });
-        setTimeout(() => requestAnimationFrame(animate), 2000);
-    };
-}
-
-document.getElementById('fullview-btn').addEventListener('click', () => {
-    const bounds = new mapboxgl.LngLatBounds();
-    destinations.forEach(d => bounds.extend([d.lng, d.lat]));
-    map.fitBounds(bounds, { padding: 60, pitch: 30, bearing: 0, duration: 2000 });
+    map.fitBounds(bounds, { padding: 60, pitch: 40, duration: 2000 });
 });
 
+// Scroll: fly to city
 const scrollObs = new IntersectionObserver((entries) => {
     entries.forEach(e => {
         if (e.isIntersecting) {
@@ -193,9 +82,16 @@ const scrollObs = new IntersectionObserver((entries) => {
             const i = parseInt(e.target.dataset.index);
             if (!isNaN(i)) {
                 const d = destinations[i];
-                map.flyTo({ center: [d.lng, d.lat], zoom: i === 0 ? 6 : 14, pitch: 60, bearing: Math.random() * 40 - 20, duration: 2500 });
+                map.flyTo({ center: [d.lng, d.lat], zoom: i === 0 ? 5 : 13, pitch: 60, bearing: Math.random() * 30 - 15, duration: 2500 });
             }
         }
     });
 }, { threshold: 0.3 });
 document.querySelectorAll('.destination').forEach(el => scrollObs.observe(el));
+
+// Full view button
+document.getElementById('fullview-btn').addEventListener('click', () => {
+    const bounds = new mapboxgl.LngLatBounds();
+    destinations.forEach(d => bounds.extend([d.lng, d.lat]));
+    map.fitBounds(bounds, { padding: 60, pitch: 40, bearing: 0, duration: 2000 });
+});
