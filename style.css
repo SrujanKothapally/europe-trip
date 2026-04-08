@@ -237,9 +237,87 @@ footer {
 .vehicle-icon {
     z-index: 2000 !important;
 }
-.vehicle {
-    font-size: 2rem;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+
+/* Plane */
+.plane-vehicle { position: relative; text-align: center; }
+.plane-body { font-size: 2rem; }
+.plane-trail {
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    width: 4px;
+    height: 12px;
+    background: linear-gradient(to bottom, rgba(201,168,76,0.5), transparent);
+    transform: translateX(-50%);
+    animation: trailPulse 0.8s ease-in-out infinite;
+}
+
+/* Train */
+.train-vehicle { position: relative; text-align: center; }
+.train-body { font-size: 2rem; position: relative; z-index: 2; }
+
+/* Spinning wheels */
+.wheels {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: -4px;
+    position: relative;
+    z-index: 1;
+}
+.wheel {
+    width: 8px;
+    height: 8px;
+    border: 2px solid #555;
+    border-radius: 50%;
+    background: #888;
+    animation: spin 0.4s linear infinite;
+    box-shadow: inset 1px 1px 0 #333;
+}
+.wheel::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    background: #555;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Smoke puffs */
+.smoke-stack {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+}
+.smoke {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: rgba(180, 180, 180, 0.7);
+    border-radius: 50%;
+    animation: smokePuff 1.5s ease-out infinite;
+}
+.smoke.s1 { left: -4px; animation-delay: 0s; }
+.smoke.s2 { left: 2px; animation-delay: 0.5s; }
+.smoke.s3 { left: -1px; animation-delay: 1s; }
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes smokePuff {
+    0% { opacity: 0.8; transform: translateY(0) scale(0.5); }
+    50% { opacity: 0.4; transform: translateY(-15px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-30px) scale(1.8); }
+}
+
+@keyframes trailPulse {
+    0%, 100% { opacity: 0.3; height: 8px; }
+    50% { opacity: 0.7; height: 14px; }
 }
 
 /* Replay button */
