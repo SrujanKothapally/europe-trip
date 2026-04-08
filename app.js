@@ -1,99 +1,89 @@
-mapboxgl.accessToken = CONFIG.t;
+const destinations = [
+    { name: "Austin", lat: 30.2672, lng: -97.7431, emoji: "✈️", color: "#4CAF50" },
+    { name: "Venice", lat: 45.4408, lng: 12.3155, emoji: "🚣", color: "#2196F3" },
+    { name: "Lucerne", lat: 47.0502, lng: 8.3093, emoji: "🏔️", color: "#FF9800" },
+    { name: "Lauterbrunnen", lat: 46.5936, lng: 7.9091, emoji: "💧", color: "#00BCD4" },
+    { name: "Paris", lat: 48.8566, lng: 2.3522, emoji: "🗼", color: "#E91E63" },
+    { name: "Bruges", lat: 51.2093, lng: 3.2247, emoji: "🏰", color: "#9C27B0" },
+    { name: "Amsterdam", lat: 52.3676, lng: 4.9041, emoji: "🚲", color: "#FF5722" }
+];
 
-const map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/outdoors-v12',
-    center: [10, 46], zoom: 7, pitch: 50, bearing: -10, projection: 'globe'
+const map = L.map('map', { zoomControl: false, scrollWheelZoom: true, attributionControl: false })
+    .setView([46, 5], 4);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(map);
+
+// Fit all destinations
+const bounds = L.latLngBounds(destinations.map(d => [d.lat, d.lng]));
+map.fitBounds(bounds, { padding: [40, 40] });
+
+// Markers
+destinations.forEach((d, i) => {
+    L.marker([d.lat, d.lng], {
+        icon: L.divIcon({
+            className: 'city-marker',
+            html: `<div class="marker-dot" style="background:${d.color}">${d.emoji}</div><div class="marker-label">${d.name}</div>`,
+            iconSize: [80, 55], iconAnchor: [40, 50]
+        })
+    }).addTo(map).on('click', () => {
+        map.flyTo([d.lat, d.lng], 10, { duration: 1 });
+        document.querySelector(`.destination[data-index="${i}"]`)?.scrollIntoView({ behavior: 'smooth' });
+    });
 });
 
-// Vehicle icon
-const iconEl = document.createElement('div');
-iconEl.className = 'nav-icon';
-iconEl.textContent = '🚂';
-const iconMarker = new mapboxgl.Marker({ element: iconEl, anchor: 'center' }).setLngLat([0, 0]);
+// Route lines connecting destinations
+for (let i = 0; i < destinations.length - 1; i++) {
+    const from = destinations[i], to = destinations[i + 1];
+    const isFlight = i === 0;
 
-map.on('style.load', async () => {
-    map.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
-    map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
-    map.setFog({ color: 'rgb(220,230,240)', 'high-color': 'rgb(180,200,230)', 'horizon-blend': 0.04 });
-
-    // Load route
-    const resp = await fetch('venice-lucerne.json');
-    const coords = await resp.json();
-
-    // Draw the single route line
-    map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
-    map.addLayer({ id: 'route-bg', type: 'line', source: 'route', paint: { 'line-color': '#1976D2', 'line-width': 6, 'line-opacity': 0.3, 'line-blur': 3 } });
-    map.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': '#1976D2', 'line-width': 3, 'line-opacity': 0.9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-
-    // Start/end markers
-    addMarker(coords[0], '🚣 Venice', '#2196F3');
-    addMarker(coords[coords.length - 1], '🏔️ Lucerne', '#FF9800');
-
-    // Fit to route
-    const bounds = new mapboxgl.LngLatBounds();
-    coords.forEach(c => bounds.extend(c));
-    map.fitBounds(bounds, { padding: 80, pitch: 50, duration: 2000 });
-
-    // Start button
-    document.getElementById('start-btn').addEventListener('click', () => startNavigation(coords));
-});
-
-function addMarker(coord, label, color) {
-    const el = document.createElement('div');
-    el.className = 'city-marker-3d';
-    el.innerHTML = `<div class="marker-dot-3d" style="background:${color}">${label.split(' ')[0]}</div><div class="marker-name-3d">${label.split(' ')[1]}</div>`;
-    new mapboxgl.Marker({ element: el }).setLngLat(coord).addTo(map);
-}
-
-function lerp(a, b, t) { return a + (b - a) * t; }
-function bearing(a, b) { return (Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI + 360) % 360; }
-
-function startNavigation(coords) {
-    const total = coords.length;
-    const duration = 60000; // 60 seconds
-    let start = null;
-
-    iconMarker.setLngLat(coords[0]).addTo(map);
-
-    function animate(ts) {
-        if (!start) start = ts;
-        const t = Math.min((ts - start) / duration, 1);
-        const exact = t * (total - 1);
-        const idx = Math.floor(exact);
-        const frac = exact - idx;
-
-        const pt = coords[idx];
-        const next = coords[Math.min(idx + 1, total - 1)];
-        const pos = [lerp(pt[0], next[0], frac), lerp(pt[1], next[1], frac)];
-
-        // Move icon
-        iconMarker.setLngLat(pos);
-
-        // Rotate icon to face direction of travel
-        const lookAhead = Math.min(idx + 15, total - 1);
-        const b = bearing(pos, coords[lookAhead]);
-        iconEl.style.transform = `rotate(${b}deg)`;
-
-        // Camera follows — fixed north, no rotation
-        map.jumpTo({
-            center: pos,
-            zoom: 11,
-            pitch: 60,
-            bearing: 0
-        });
-
-        if (t < 1) {
-            requestAnimationFrame(animate);
-        } else {
-            // Done — zoom out to show full route
-            const bounds = new mapboxgl.LngLatBounds();
-            coords.forEach(c => bounds.extend(c));
-            map.fitBounds(bounds, { padding: 80, pitch: 50, duration: 2000 });
+    // Build path
+    let path;
+    if (isFlight) {
+        // Arc for flight
+        path = [];
+        for (let s = 0; s <= 50; s++) {
+            const t = s / 50;
+            path.push([
+                from.lat + (to.lat - from.lat) * t + Math.sin(t * Math.PI) * 8,
+                from.lng + (to.lng - from.lng) * t
+            ]);
         }
+    } else {
+        path = [[from.lat, from.lng], [to.lat, to.lng]];
     }
 
-    // Zoom to start
-    map.flyTo({ center: coords[0], zoom: 11, pitch: 60, bearing: 0, duration: 2000 });
-    setTimeout(() => requestAnimationFrame(animate), 2500);
+    L.polyline(path, {
+        color: to.color,
+        weight: isFlight ? 2.5 : 3.5,
+        opacity: 0.7,
+        dashArray: isFlight ? '8 8' : null
+    }).addTo(map);
+
+    // Arrow at midpoint
+    const midIdx = Math.floor(path.length / 2);
+    const mid = isFlight ? path[midIdx] : [(from.lat + to.lat) / 2, (from.lng + to.lng) / 2];
+    const angle = Math.atan2(to.lng - from.lng, to.lat - from.lat) * 180 / Math.PI;
+
+    L.marker(mid, {
+        icon: L.divIcon({
+            className: 'arrow-marker',
+            html: `<div class="route-arrow" style="transform:rotate(${90 - angle}deg); color:${to.color}">➤</div>`,
+            iconSize: [20, 20], iconAnchor: [10, 10]
+        })
+    }).addTo(map);
 }
+
+// Scroll: highlight city
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            const idx = parseInt(entry.target.dataset.index);
+            if (!isNaN(idx)) {
+                const d = destinations[idx];
+                map.flyTo([d.lat, d.lng], idx === 0 ? 5 : 10, { duration: 1.2 });
+            }
+        }
+    });
+}, { threshold: 0.3 });
+document.querySelectorAll('.destination').forEach(el => observer.observe(el));
