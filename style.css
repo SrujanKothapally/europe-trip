@@ -240,7 +240,23 @@ footer {
 .vehicle {
     font-size: 2rem;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
-    transition: transform 0.15s linear;
+}
+
+/* Replay button */
+.replay-btn {
+    background: #c9a84c;
+    color: #fff;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 1rem;
+    transition: background 0.2s;
+}
+.replay-btn:hover {
+    background: #b08a3a;
 }
 
 /* Responsive */
