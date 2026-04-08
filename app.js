@@ -8,7 +8,6 @@ const destinations = [
     { name: "Amsterdam", lat: 52.3676, lng: 4.9041, emoji: "🚲" }
 ];
 
-// --- Map ---
 const map = L.map('map', {
     zoomControl: false,
     scrollWheelZoom: true,
@@ -20,8 +19,8 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 18
 }).addTo(map);
 
-const bounds = L.latLngBounds(destinations.map(d => [d.lat, d.lng]));
-map.fitBounds(bounds, { padding: [50, 50] });
+const fullBounds = L.latLngBounds(destinations.map(d => [d.lat, d.lng]));
+map.fitBounds(fullBounds, { padding: [50, 50] });
 
 // --- City Markers ---
 const markers = destinations.map((d, i) => {
@@ -41,7 +40,7 @@ const markers = destinations.map((d, i) => {
     return marker;
 });
 
-// --- Interpolation helpers ---
+// --- Helpers ---
 function lerp(a, b, t) { return a + (b - a) * t; }
 
 function interpolate(start, end, steps) {
@@ -53,45 +52,44 @@ function interpolate(start, end, steps) {
     return pts;
 }
 
-function angleDeg(from, to) {
-    return Math.atan2(to[1] - from[1], to[0] - from[0]) * 180 / Math.PI;
-}
-
-// --- Build route segments ---
-// Segment 0: Austin→Venice (flight, curved arc)
-// Segments 1+: train through Europe
 function buildArc(start, end, steps, arcHeight) {
     const pts = [];
     for (let s = 0; s <= steps; s++) {
         const t = s / steps;
-        const lat = lerp(start[0], end[0], t);
-        const lng = lerp(start[1], end[1], t);
-        const arc = Math.sin(t * Math.PI) * arcHeight;
-        pts.push([lat + arc, lng]);
+        pts.push([lerp(start[0], end[0], t) + Math.sin(t * Math.PI) * arcHeight, lerp(start[1], end[1], t)]);
     }
     return pts;
 }
 
+// --- Route data ---
 const flightPath = buildArc(
     [destinations[0].lat, destinations[0].lng],
     [destinations[1].lat, destinations[1].lng],
-    60, 8 // arc curves north over Atlantic
+    60, 8
 );
 
-const trainSegments = [];
+const trainLegs = [];
 for (let i = 1; i < destinations.length - 1; i++) {
-    trainSegments.push(interpolate(
-        [destinations[i].lat, destinations[i].lng],
-        [destinations[i + 1].lat, destinations[i + 1].lng],
-        25
-    ));
+    trainLegs.push({
+        from: destinations[i],
+        to: destinations[i + 1],
+        points: interpolate(
+            [destinations[i].lat, destinations[i].lng],
+            [destinations[i + 1].lat, destinations[i + 1].lng],
+            30
+        )
+    });
 }
 
-// --- Route lines (drawn progressively) ---
+// --- Route lines ---
 const flightLine = L.polyline([], { color: '#c9a84c', weight: 2.5, opacity: 0.6, dashArray: '8 8' }).addTo(map);
-const trainLine = L.polyline([], { color: '#c9a84c', weight: 3, opacity: 0.8 }).addTo(map);
 
-// --- Moving vehicle marker ---
+// Train track: thick gray base + thinner dashed white on top = track look
+const trackBase = L.polyline([], { color: '#666', weight: 5, opacity: 0.5 }).addTo(map);
+const trackTies = L.polyline([], { color: '#fff', weight: 5, opacity: 0.7, dashArray: '2 8' }).addTo(map);
+const trackRail = L.polyline([], { color: '#c9a84c', weight: 2, opacity: 0.9 }).addTo(map);
+
+// --- Vehicle ---
 const vehicleMarker = L.marker([destinations[0].lat, destinations[0].lng], {
     icon: L.divIcon({
         className: 'vehicle-icon',
@@ -102,56 +100,101 @@ const vehicleMarker = L.marker([destinations[0].lat, destinations[0].lng], {
     zIndexOffset: 2000
 }).addTo(map);
 
-function setVehicle(emoji, angle) {
+function setVehicleEmoji(emoji) {
     const el = vehicleMarker.getElement();
-    if (el) {
-        el.querySelector('.vehicle').textContent = emoji;
-        el.querySelector('.vehicle').style.transform = `rotate(${angle}deg)`;
-    }
+    if (el) el.querySelector('.vehicle').textContent = emoji;
 }
 
-// --- Animation engine ---
-function animateAlongPath(points, line, emoji, speed, onDone) {
-    let i = 0;
-    function step() {
-        if (i >= points.length) { if (onDone) onDone(); return; }
-        const pt = points[i];
-        vehicleMarker.setLatLng(pt);
-        line.addLatLng(pt);
-        if (i < points.length - 1) {
-            const angle = angleDeg(pt, points[i + 1]);
-            setVehicle(emoji, angle);
+// --- Animation ---
+function animatePath(points, line, speed) {
+    return new Promise(resolve => {
+        let i = 0;
+        function step() {
+            if (i >= points.length) { resolve(); return; }
+            vehicleMarker.setLatLng(points[i]);
+            line.addLatLng(points[i]);
+            i++;
+            setTimeout(step, speed);
         }
-        i++;
-        setTimeout(step, speed);
-    }
-    step();
-}
-
-function runFullAnimation() {
-    // Phase 1: Flight Austin → Venice
-    setVehicle('✈️', 0);
-    animateAlongPath(flightPath, flightLine, '✈️', 40, () => {
-        // Phase 2: Train through Europe
-        let segIdx = 0;
-        function nextTrain() {
-            if (segIdx >= trainSegments.length) {
-                // Done — hide vehicle
-                vehicleMarker.setOpacity(0);
-                return;
-            }
-            setVehicle('🚂', 0);
-            animateAlongPath(trainSegments[segIdx], trainLine, '🚂', 50, () => {
-                segIdx++;
-                // Brief pause at each city
-                setTimeout(nextTrain, 400);
-            });
-        }
-        setTimeout(nextTrain, 500);
+        step();
     });
 }
 
-// --- Start animation when map is visible ---
+function addTrackPoints(points) {
+    points.forEach(p => {
+        trackBase.addLatLng(p);
+        trackTies.addLatLng(p);
+        trackRail.addLatLng(p);
+    });
+}
+
+function animateTrainLeg(leg, speed) {
+    return new Promise(resolve => {
+        let i = 0;
+        function step() {
+            if (i >= leg.points.length) { resolve(); return; }
+            const pt = leg.points[i];
+            vehicleMarker.setLatLng(pt);
+            trackBase.addLatLng(pt);
+            trackTies.addLatLng(pt);
+            trackRail.addLatLng(pt);
+            i++;
+            setTimeout(step, speed);
+        }
+        step();
+    });
+}
+
+async function runFullAnimation() {
+    // Phase 1: Flight — zoom out to show full Atlantic crossing
+    setVehicleEmoji('✈️');
+    map.flyToBounds(L.latLngBounds(
+        [destinations[0].lat, destinations[0].lng],
+        [destinations[1].lat, destinations[1].lng]
+    ), { padding: [80, 80], duration: 1.5 });
+    await new Promise(r => setTimeout(r, 1800));
+    await animatePath(flightPath, flightLine, 35);
+
+    // Pause at Venice
+    await new Promise(r => setTimeout(r, 600));
+
+    // Phase 2: Train through Europe — zoom into each leg
+    setVehicleEmoji('🚂');
+    for (const leg of trainLegs) {
+        // Zoom to show this leg (from → to)
+        const legBounds = L.latLngBounds(
+            [leg.from.lat, leg.from.lng],
+            [leg.to.lat, leg.to.lng]
+        );
+        map.flyToBounds(legBounds, { padding: [100, 100], duration: 1.2 });
+        await new Promise(r => setTimeout(r, 1400));
+
+        await animateTrainLeg(leg, 50);
+
+        // Pause at city
+        await new Promise(r => setTimeout(r, 500));
+    }
+
+    // Zoom back out to full route
+    await new Promise(r => setTimeout(r, 800));
+    vehicleMarker.setOpacity(0);
+    map.flyToBounds(fullBounds, { padding: [50, 50], duration: 1.5 });
+}
+
+// --- Replay button ---
+document.getElementById('replay-btn').addEventListener('click', () => {
+    // Reset lines
+    flightLine.setLatLngs([]);
+    trackBase.setLatLngs([]);
+    trackTies.setLatLngs([]);
+    trackRail.setLatLngs([]);
+    vehicleMarker.setLatLng([destinations[0].lat, destinations[0].lng]);
+    vehicleMarker.setOpacity(1);
+    map.flyToBounds(fullBounds, { padding: [50, 50], duration: 1 });
+    setTimeout(runFullAnimation, 1200);
+});
+
+// --- Start on scroll ---
 const mapObserver = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
         setTimeout(runFullAnimation, 600);
@@ -166,8 +209,7 @@ function highlightMarker(activeIdx) {
         el.classList.toggle('active', i === activeIdx);
     });
     const d = destinations[activeIdx];
-    const zoom = activeIdx === 0 ? 5 : 9;
-    map.flyTo([d.lat, d.lng], zoom, { duration: 1.2 });
+    map.flyTo([d.lat, d.lng], activeIdx === 0 ? 5 : 9, { duration: 1.2 });
 }
 
 const observer = new IntersectionObserver((entries) => {
@@ -179,14 +221,12 @@ const observer = new IntersectionObserver((entries) => {
         }
     });
 }, { threshold: 0.3 });
-
 document.querySelectorAll('.destination').forEach(el => observer.observe(el));
 
-// Reset to full view when scrolling back to map
 const mapSection = document.querySelector('.map-section');
 const mapResetObserver = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && entries[0].intersectionRatio > 0.8) {
-        map.flyToBounds(bounds, { padding: [50, 50], duration: 1 });
+        map.flyToBounds(fullBounds, { padding: [50, 50], duration: 1 });
         document.querySelectorAll('.city-marker').forEach(el => el.classList.remove('active'));
     }
 }, { threshold: 0.8 });
