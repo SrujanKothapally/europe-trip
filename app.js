@@ -121,6 +121,8 @@ function animateJourney(coords, legBounds) {
         return 0;
     }
 
+    let prevLegIdx = -1;
+
     function animate(ts) {
         if (!start) start = ts;
         const progress = Math.min((ts - start) / duration, 1);
@@ -135,32 +137,20 @@ function animateJourney(coords, legBounds) {
         // Leg info
         const legIdx = getLeg(idx);
         const meta = legMeta[legIdx];
-        showLeg(meta.label);
-        vehicleEl.querySelector('.gmap-icon').textContent = meta.type === 'flight' ? '✈️' : '🚂';
 
-        // Move vehicle
-        marker.setLngLat(pos);
-
-        // Camera (throttled) + rotate vehicle only when camera updates
-        if (ts - lastCamTime > 800) {
-            lastCamTime = ts;
-            const camAhead = Math.min(idx + 20, total - 1);
-            const bearing = angleDeg(pos, coords[camAhead]);
-            const isFlight = meta.type === 'flight';
-
-            // Set vehicle direction (far look-ahead = stable, no jitter)
-            const dirAhead = Math.min(idx + 50, total - 1);
-            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angleDeg(pt, coords[dirAhead])}deg)`;
-
-            map.easeTo({
-                center: pos,
-                zoom: isFlight ? lerp(3, 5, (idx / legBounds[1])) : 10,
-                pitch: isFlight ? 30 : 50,
-                bearing: bearing * 0.2,
-                duration: 1000,
-                easing: t => t * (2 - t)
-            });
+        // Only update icon + label + rotation when leg changes
+        if (legIdx !== prevLegIdx) {
+            prevLegIdx = legIdx;
+            showLeg(meta.label);
+            vehicleEl.querySelector('.gmap-icon').textContent = meta.type === 'flight' ? '✈️' : '🚂';
+            // Set rotation to face the END of this leg
+            const legEnd = Math.min(legBounds[legIdx + 1] || total - 1, total - 1);
+            const angle = angleDeg(pt, coords[legEnd]);
+            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angle}deg)`;
         }
+
+        // Move vehicle — this is the ONLY thing that updates every frame
+        marker.setLngLat(pos);
 
         progressBar.style.width = `${progress * 100}%`;
 
@@ -175,7 +165,10 @@ function animateJourney(coords, legBounds) {
         }
     }
 
-    map.flyTo({ center: coords[0], zoom: 4, pitch: 30, bearing: 30, duration: 2000 });
+    // Show full route at start, no camera movement during animation
+    const bounds = new mapboxgl.LngLatBounds();
+    destinations.forEach(d => bounds.extend([d.lng, d.lat]));
+    map.fitBounds(bounds, { padding: 60, pitch: 40, bearing: 0, duration: 2000 });
     setTimeout(() => requestAnimationFrame(animate), 2500);
 
     document.getElementById('replay-btn').onclick = () => {
