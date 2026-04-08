@@ -149,9 +149,9 @@ function runJourney() {
         // Move vehicle (sub-pixel smooth)
         vehicleMarker.setLngLat(smoothPt);
 
-        // Rotate toward direction of travel
+        // Rotate toward direction of travel (look far ahead for smooth angle)
         if (idx < total - 2) {
-            const lookAhead = Math.min(idx + 10, total - 1);
+            const lookAhead = Math.min(idx + 80, total - 1);
             const angle = angleDeg(pt, pts[lookAhead]);
             vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${-angle}deg)`;
         }
@@ -166,20 +166,23 @@ function runJourney() {
             });
         }
 
-        // Camera: smooth continuous follow
-        const lookAheadCam = Math.min(idx + 60, total - 1);
-        const camTarget = pts[lookAheadCam];
-        const camBearing = angleDeg(smoothPt, camTarget);
-        const zoom = isFlight ? lerp(3, 5.5, idx / legStarts[1]) : 10;
+        // Camera: update only every 500ms to prevent vibration
+        if (!this.lastCamTime || timestamp - this.lastCamTime > 500) {
+            this.lastCamTime = timestamp;
+            const lookAheadCam = Math.min(idx + 100, total - 1);
+            const camTarget = pts[lookAheadCam];
+            const camBearing = angleDeg(smoothPt, camTarget);
+            const zoom = isFlight ? lerp(3, 5.5, idx / legStarts[1]) : 10;
 
-        map.easeTo({
-            center: smoothPt,
-            zoom,
-            pitch: isFlight ? 35 : 55,
-            bearing: camBearing * 0.3,
-            duration: 100,
-            easing: t => t
-        });
+            map.easeTo({
+                center: smoothPt,
+                zoom,
+                pitch: isFlight ? 35 : 55,
+                bearing: camBearing * 0.3,
+                duration: 600,
+                easing: t => t * (2 - t) // ease-out for smooth decel
+            });
+        }
 
         progressBar.style.width = `${progress * 100}%`;
 
