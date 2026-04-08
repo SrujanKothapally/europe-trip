@@ -22,6 +22,78 @@ body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #e0e0e0; ov
 .arrow-marker { pointer-events: none; }
 .route-arrow { font-size: 1rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
 
+/* Roadmap Infographic */
+.roadmap {
+    position: relative; z-index: 20;
+    background: linear-gradient(to bottom, #faf8f5, #f0ece4);
+    padding: 4rem 2rem;
+}
+.roadmap-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem; color: #222;
+    text-align: center; margin-bottom: 3rem;
+}
+.roadmap-leg {
+    max-width: 700px; margin: 0 auto 2.5rem;
+    opacity: 0; transform: translateY(30px);
+    transition: all 0.6s ease-out;
+}
+.roadmap-leg.visible { opacity: 1; transform: translateY(0); }
+.leg-header {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1rem;
+}
+.leg-badge {
+    background: var(--leg-color); color: #fff;
+    padding: 6px 16px; border-radius: 20px;
+    font-size: 0.8rem; font-weight: 700;
+    white-space: nowrap;
+}
+.leg-route {
+    font-size: 0.9rem; font-weight: 600; color: #555;
+}
+.leg-path {
+    position: relative;
+    padding: 0.5rem 0 0.5rem 2rem;
+}
+.path-line {
+    position: absolute; left: 1.1rem; top: 0; bottom: 0;
+    width: 4px; background: var(--leg-color);
+    border-radius: 2px; opacity: 0.4;
+}
+.path-stops {
+    display: flex; flex-direction: column; gap: 0;
+}
+.stop {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.6rem 0;
+    position: relative;
+}
+.stop-icon {
+    width: 40px; height: 40px;
+    background: #fff;
+    border: 3px solid var(--leg-color);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative; z-index: 2;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.stop:hover .stop-icon {
+    transform: scale(1.2);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.stop span {
+    font-size: 0.9rem; font-weight: 600; color: #333;
+}
+
+/* Alternating left/right layout for winding effect */
+.roadmap-leg:nth-child(odd) .leg-path { padding-left: 2rem; }
+.roadmap-leg:nth-child(even) .leg-path { padding-left: 2rem; direction: rtl; }
+.roadmap-leg:nth-child(even) .leg-path .stop { direction: ltr; flex-direction: row-reverse; }
+.roadmap-leg:nth-child(even) .path-line { left: auto; right: 1.1rem; }
+
 /* Destinations */
 .destinations { position: relative; z-index: 20; background: #0a0a0a; }
 .destination { display: grid; grid-template-columns: 1fr 1fr; min-height: 80vh; opacity: 0; transform: translateY(60px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
