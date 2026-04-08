@@ -60,6 +60,48 @@ footer { text-align: center; padding: 4rem 2rem; color: #555; font-size: 1rem; b
 @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
 
+/* === 3D Vehicles === */
+.vehicle-3d { pointer-events: none; z-index: 2000; }
+
+/* --- Plane --- */
+.plane-model { position: relative; width: 50px; height: 50px; }
+.fuselage { position: absolute; top: 50%; left: 50%; width: 36px; height: 10px; background: linear-gradient(to bottom, #f0f0f0, #ccc); border-radius: 5px 12px 12px 5px; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.wing-l, .wing-r { position: absolute; top: 50%; left: 50%; width: 14px; height: 30px; background: linear-gradient(to right, #ddd, #bbb); border-radius: 2px 8px 8px 2px; }
+.wing-l { transform: translate(-60%, -100%) skewX(-10deg); }
+.wing-r { transform: translate(-60%, 0%) skewX(10deg); }
+.tail { position: absolute; top: 50%; left: 15%; width: 8px; height: 16px; background: linear-gradient(to right, #c62828, #e53935); border-radius: 2px 4px 4px 2px; transform: translate(-50%, -50%); }
+.contrail { position: absolute; top: 50%; left: 0; width: 30px; height: 3px; background: linear-gradient(to left, rgba(255,255,255,0.6), transparent); transform: translateY(-50%); animation: contrailPulse 1s ease-in-out infinite; }
+
+/* --- Train --- */
+.train-model { position: relative; width: 70px; height: 40px; }
+.loco-body { position: absolute; bottom: 10px; left: 50%; width: 32px; height: 18px; background: linear-gradient(to bottom, #1a237e, #283593); border-radius: 4px 8px 2px 2px; transform: translateX(-50%); box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+.chimney { position: absolute; bottom: 28px; left: 55%; width: 6px; height: 8px; background: #333; border-radius: 2px 2px 0 0; transform: translateX(-50%); }
+.cabin { position: absolute; bottom: 12px; left: 30%; width: 14px; height: 16px; background: linear-gradient(to bottom, #c62828, #b71c1c); border-radius: 2px 2px 0 0; }
+.loco-window { position: absolute; bottom: 20px; left: 32%; width: 10px; height: 5px; background: rgba(200,230,255,0.8); border-radius: 1px; }
+
+/* Smoke */
+.smoke-puff { position: absolute; border-radius: 50%; background: rgba(200,200,200,0.7); }
+.smoke-puff.p1 { width: 8px; height: 8px; bottom: 34px; left: 52%; animation: smokeRise 2s ease-out infinite; }
+.smoke-puff.p2 { width: 10px; height: 10px; bottom: 34px; left: 50%; animation: smokeRise 2s ease-out 0.7s infinite; }
+.smoke-puff.p3 { width: 7px; height: 7px; bottom: 34px; left: 54%; animation: smokeRise 2s ease-out 1.3s infinite; }
+
+/* Wheels */
+.wheel-set { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
+.rail-wheel { width: 7px; height: 7px; border: 2px solid #444; border-radius: 50%; background: #777; animation: wheelSpin 0.3s linear infinite; }
+.rail-wheel::after { content: ''; position: absolute; width: 1px; height: 7px; background: #444; left: 50%; transform: translateX(-50%); }
+
+/* Passenger car */
+.car { position: absolute; bottom: 10px; right: -2px; }
+.car-body { width: 24px; height: 14px; background: linear-gradient(to bottom, #2e7d32, #388e3c); border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.car-windows { position: absolute; top: 3px; left: 2px; width: 20px; height: 4px; background: repeating-linear-gradient(to right, rgba(200,230,255,0.8) 0px, rgba(200,230,255,0.8) 3px, #2e7d32 3px, #2e7d32 5px); border-radius: 1px; }
+.car-wheel { position: absolute; bottom: -4px; width: 5px; height: 5px; border: 1.5px solid #444; border-radius: 50%; background: #777; animation: wheelSpin 0.3s linear infinite; }
+.car-wheel.cw1 { left: 3px; }
+.car-wheel.cw2 { right: 3px; }
+
+@keyframes smokeRise { 0% { opacity: 0.7; transform: translateY(0) scale(0.6); } 50% { opacity: 0.3; } 100% { opacity: 0; transform: translateY(-25px) scale(2); } }
+@keyframes wheelSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes contrailPulse { 0%,100% { opacity: 0.4; width: 25px; } 50% { opacity: 0.7; width: 35px; } }
+
 @media (max-width: 768px) {
     .destination { grid-template-columns: 1fr; }
     .destination:nth-child(even) { direction: ltr; }
