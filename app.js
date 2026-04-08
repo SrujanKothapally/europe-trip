@@ -68,7 +68,12 @@ function buildRoute() {
     return { pts, legStarts };
 }
 
-function angleDeg(a, b) { return Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI; }
+function angleDeg(a, b) {
+    // Returns bearing in degrees: 0=north, 90=east (standard map bearing)
+    const dLng = b[0] - a[0];
+    const dLat = b[1] - a[1];
+    return (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+}
 
 const progressBar = document.getElementById('progress-bar');
 const currentLeg = document.getElementById('current-leg');
@@ -153,7 +158,7 @@ function runJourney() {
         if (idx < total - 2) {
             const lookAhead = Math.min(idx + 80, total - 1);
             const angle = angleDeg(pt, pts[lookAhead]);
-            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${-angle}deg)`;
+            vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angle}deg)`;
         }
 
         // Draw route trail (add points we've passed)
