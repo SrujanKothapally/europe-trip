@@ -70,15 +70,17 @@ function startNavigation(coords) {
         // Move icon
         iconMarker.setLngLat(pos);
 
-        // Camera follows — Google Maps style: centered on icon, looking ahead
+        // Rotate icon to face direction of travel
         const lookAhead = Math.min(idx + 15, total - 1);
         const b = bearing(pos, coords[lookAhead]);
+        iconEl.style.transform = `rotate(${b}deg)`;
 
+        // Camera follows — fixed north, no rotation
         map.jumpTo({
             center: pos,
             zoom: 11,
             pitch: 60,
-            bearing: b
+            bearing: 0
         });
 
         if (t < 1) {
@@ -92,6 +94,6 @@ function startNavigation(coords) {
     }
 
     // Zoom to start
-    map.flyTo({ center: coords[0], zoom: 11, pitch: 60, bearing: bearing(coords[0], coords[15]), duration: 2000 });
+    map.flyTo({ center: coords[0], zoom: 11, pitch: 60, bearing: 0, duration: 2000 });
     setTimeout(() => requestAnimationFrame(animate), 2500);
 }
