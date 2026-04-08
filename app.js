@@ -10,108 +10,34 @@ const destinations = [
     { name: "Amsterdam", lng: 4.9041, lat: 52.3676, emoji: "🚲", color: "#FF5722" }
 ];
 
-// Real route waypoints following actual train/road paths
-const routeLegs = [
-    {
-        // Flight: Austin → Venice (arc over Atlantic)
-        type: 'flight', label: '✈️ Austin → Venice', color: '#4CAF50',
-        waypoints: null // generated as arc
-    },
-    {
-        // Venice → Milan → Como → Lugano → Gotthard → Flüelen → Lake Lucerne → Lucerne
-        type: 'train', label: '🚂 Venice → Lucerne (Gotthard Panorama Express)', color: '#2196F3',
-        waypoints: [
-            [12.3155, 45.4408],  // Venice Santa Lucia
-            [12.2550, 45.4830],  // Mestre
-            [11.8760, 45.4060],  // Verona
-            [11.3440, 45.4380],  // Peschiera del Garda
-            [10.6310, 45.4650],  // Brescia
-            [9.6700, 45.5200],   // Bergamo area
-            [9.1900, 45.4640],   // Milan Centrale
-            [9.0850, 45.8100],   // Como San Giovanni
-            [9.0170, 45.9700],   // Lugano approach
-            [8.9510, 46.0037],   // Lugano
-            [8.9250, 46.0900],   // Bellinzona
-            [8.8050, 46.2540],   // Biasca
-            [8.7510, 46.3300],   // Faido
-            [8.6510, 46.4800],   // Airolo (south portal Gotthard)
-            [8.6100, 46.5500],   // Göschenen (north portal)
-            [8.6440, 46.6300],   // Wassen (spiral tunnels)
-            [8.6430, 46.7100],   // Erstfeld
-            [8.6310, 46.7700],   // Flüelen (boat starts)
-            [8.6100, 46.8200],   // Lake Lucerne (Brunnen)
-            [8.5200, 46.8800],   // Beckenried
-            [8.4400, 46.9300],   // Stansstad
-            [8.3093, 47.0502],   // Lucerne
-        ]
-    },
-    {
-        // Lucerne → Lauterbrunnen (via Interlaken)
-        type: 'train', label: '🚂 Lucerne → Lauterbrunnen', color: '#00BCD4',
-        waypoints: [
-            [8.3093, 47.0502],   // Lucerne
-            [8.1750, 46.9480],   // Alpnachstad
-            [8.0600, 46.8830],   // Sarnen
-            [8.0350, 46.7700],   // Lungern
-            [8.0500, 46.7100],   // Brünig Pass
-            [8.0330, 46.6950],   // Meiringen
-            [7.8500, 46.6860],   // Brienz
-            [7.8530, 46.6860],   // Lake Brienz
-            [7.8500, 46.6830],   // Interlaken Ost
-            [7.9091, 46.5936],   // Lauterbrunnen
-        ]
-    },
-    {
-        // Lauterbrunnen → Paris (via Bern, Basel, Strasbourg)
-        type: 'train', label: '🚂 Lauterbrunnen → Paris', color: '#E91E63',
-        waypoints: [
-            [7.9091, 46.5936],   // Lauterbrunnen
-            [7.8500, 46.6830],   // Interlaken
-            [7.6290, 46.7520],   // Spiez
-            [7.5890, 46.8500],   // Thun
-            [7.4400, 46.9480],   // Bern
-            [7.5900, 47.5470],   // Basel SBB
-            [7.7340, 48.5850],   // Strasbourg
-            [3.8700, 49.2100],   // Reims area
-            [2.3522, 48.8566],   // Paris Gare de l'Est
-        ]
-    },
-    {
-        // Paris → Bruges (via Lille, Kortrijk)
-        type: 'train', label: '🚂 Paris → Bruges', color: '#9C27B0',
-        waypoints: [
-            [2.3522, 48.8566],   // Paris Nord
-            [2.7800, 49.4200],   // Compiègne area
-            [3.0700, 50.6290],   // Lille
-            [3.2640, 50.8270],   // Kortrijk
-            [3.2247, 51.2093],   // Bruges
-        ]
-    },
-    {
-        // Bruges → Amsterdam (via Ghent, Antwerp, Rotterdam)
-        type: 'train', label: '🚂 Bruges → Amsterdam', color: '#FF5722',
-        waypoints: [
-            [3.2247, 51.2093],   // Bruges
-            [3.7210, 51.0540],   // Ghent
-            [4.4210, 51.2190],   // Antwerp
-            [4.4690, 51.4430],   // Breda
-            [4.4700, 51.9230],   // Rotterdam
-            [4.3570, 52.0790],   // Den Haag
-            [4.6400, 52.2280],   // Leiden
-            [4.6320, 52.3080],   // Schiphol area
-            [4.9041, 52.3676],   // Amsterdam Centraal
-        ]
-    }
+const legMeta = [
+    { name: 'Austin → Venice', type: 'flight', color: '#4CAF50', label: '✈️ Austin → Venice' },
+    { name: 'Venice → Lucerne', type: 'train', color: '#2196F3', label: '🚂 Gotthard Panorama Express' },
+    { name: 'Lucerne → Lauterbrunnen', type: 'train', color: '#00BCD4', label: '🚂 Lucerne → Lauterbrunnen' },
+    { name: 'Lauterbrunnen → Paris', type: 'train', color: '#E91E63', label: '🚂 Lauterbrunnen → Paris' },
+    { name: 'Paris → Bruges', type: 'train', color: '#9C27B0', label: '🚂 Paris → Bruges' },
+    { name: 'Bruges → Amsterdam', type: 'train', color: '#FF5722', label: '🚂 Bruges → Amsterdam' }
 ];
 
-// --- Map ---
 const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/outdoors-v12',
     center: [-20, 40], zoom: 2.5, pitch: 0, bearing: 0, projection: 'globe'
 });
 
-map.on('style.load', () => {
+function lerp(a, b, t) { return a + (b - a) * t; }
+function angleDeg(a, b) { return (Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI + 360) % 360; }
+
+function buildFlightArc() {
+    const f = destinations[0], t = destinations[1], pts = [];
+    for (let i = 0; i <= 200; i++) {
+        const frac = i / 200;
+        pts.push([lerp(f.lng, t.lng, frac), lerp(f.lat, t.lat, frac) + Math.sin(frac * Math.PI) * 8]);
+    }
+    return pts;
+}
+
+map.on('style.load', async () => {
     map.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
     map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
     map.setFog({ color: 'rgb(220,230,240)', 'high-color': 'rgb(180,200,230)', 'horizon-blend': 0.05, 'space-color': 'rgb(15,15,30)', 'star-intensity': 0.3 });
@@ -128,135 +54,108 @@ map.on('style.load', () => {
         new mapboxgl.Marker({ element: el }).setLngLat([d.lng, d.lat]).addTo(map);
     });
 
-    // Build all route coordinates
-    const allCoords = buildAllCoords();
+    // Load real routes
+    const resp = await fetch('routes.json');
+    const routes = await resp.json();
 
-    // Add full route as one line
-    map.addSource('route', {
-        type: 'geojson',
-        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: allCoords } }
+    // Build full coordinate array
+    const flightArc = buildFlightArc();
+    const allLegs = [flightArc];
+    const legNames = Object.keys(routes);
+    legNames.forEach(name => allLegs.push(routes[name]));
+
+    // Flatten into one array for animation
+    let allCoords = [...flightArc];
+    const legBounds = [0, flightArc.length];
+    legNames.forEach(name => {
+        const pts = routes[name];
+        allCoords = allCoords.concat(pts.slice(1));
+        legBounds.push(allCoords.length);
     });
-    map.addLayer({ id: 'route-glow', type: 'line', source: 'route', paint: { 'line-color': '#c9a84c', 'line-width': 6, 'line-opacity': 0.2, 'line-blur': 4 } });
-    map.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': '#c9a84c', 'line-width': 3, 'line-opacity': 0.85 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
 
-    // Add colored segments per leg
-    routeLegs.forEach((leg, i) => {
-        const coords = leg.waypoints || buildFlightArc();
+    // Draw each leg as colored line
+    allLegs.forEach((coords, i) => {
+        const meta = legMeta[i];
         map.addSource(`leg-${i}`, {
             type: 'geojson',
             data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }
         });
         map.addLayer({
-            id: `leg-line-${i}`, type: 'line', source: `leg-${i}`,
+            id: `leg-${i}`, type: 'line', source: `leg-${i}`,
             paint: {
-                'line-color': leg.color,
-                'line-width': leg.type === 'flight' ? 2.5 : 4,
-                'line-opacity': 0.7,
-                'line-dasharray': leg.type === 'flight' ? [4, 4] : [1, 0]
+                'line-color': meta.color,
+                'line-width': meta.type === 'flight' ? 2.5 : 4,
+                'line-opacity': 0.75,
+                'line-dasharray': meta.type === 'flight' ? [4, 4] : [1, 0]
             },
             layout: { 'line-cap': 'round', 'line-join': 'round' }
         });
     });
 
-    // Animate: fly along the route
-    setTimeout(() => animateFlyAlong(allCoords), 1500);
+    // Animate
+    setTimeout(() => animateJourney(allCoords, legBounds), 1500);
 });
-
-function lerp(a, b, t) { return a + (b - a) * t; }
-
-function buildFlightArc() {
-    const from = destinations[0], to = destinations[1];
-    const pts = [];
-    for (let i = 0; i <= 100; i++) {
-        const t = i / 100;
-        pts.push([
-            lerp(from.lng, to.lng, t),
-            lerp(from.lat, to.lat, t) + Math.sin(t * Math.PI) * 8
-        ]);
-    }
-    routeLegs[0].waypoints = pts;
-    return pts;
-}
-
-function buildAllCoords() {
-    const arc = buildFlightArc();
-    let all = [...arc];
-    for (let i = 1; i < routeLegs.length; i++) {
-        all = all.concat(routeLegs[i].waypoints.slice(1));
-    }
-    return all;
-}
-
-// --- Simple fly-along animation (camera only, no vehicle marker needed) ---
-function angleDeg(a, b) {
-    return (Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI + 360) % 360;
-}
 
 const progressBar = document.getElementById('progress-bar');
 const currentLeg = document.getElementById('current-leg');
 function showLeg(t) { currentLeg.textContent = t; currentLeg.classList.add('visible'); }
 function hideLeg() { currentLeg.classList.remove('visible'); }
 
-function animateFlyAlong(coords) {
+function animateJourney(coords, legBounds) {
     const total = coords.length;
-    const duration = 90000; // 90 seconds total
+    const duration = 120000; // 2 minutes
     let start = null;
-    let currentLegIdx = 0;
 
-    // Vehicle icon
     const vehicleEl = document.createElement('div');
     vehicleEl.className = 'gmap-vehicle';
     vehicleEl.innerHTML = '<div class="gmap-icon">✈️</div>';
     const marker = new mapboxgl.Marker({ element: vehicleEl, anchor: 'center' })
         .setLngLat(coords[0]).addTo(map);
 
-    // Pre-compute leg boundaries in the allCoords array
-    let legBoundaries = [0];
-    let cumLen = routeLegs[0].waypoints.length;
-    for (let i = 1; i < routeLegs.length; i++) {
-        cumLen += routeLegs[i].waypoints.length - 1;
-        legBoundaries.push(cumLen);
+    let lastCamTime = 0;
+
+    function getLeg(idx) {
+        for (let i = legBounds.length - 1; i >= 0; i--) {
+            if (idx >= legBounds[i]) return i;
+        }
+        return 0;
     }
 
     function animate(ts) {
         if (!start) start = ts;
         const progress = Math.min((ts - start) / duration, 1);
-        const exactIdx = progress * (total - 1);
-        const idx = Math.floor(exactIdx);
-        const frac = exactIdx - idx;
+        const exact = progress * (total - 1);
+        const idx = Math.floor(exact);
+        const frac = exact - idx;
 
-        // Interpolate position
         const pt = coords[idx];
         const next = coords[Math.min(idx + 1, total - 1)];
         const pos = [lerp(pt[0], next[0], frac), lerp(pt[1], next[1], frac)];
 
-        // Update leg
-        for (let i = legBoundaries.length - 1; i >= 0; i--) {
-            if (idx >= legBoundaries[i]) { currentLegIdx = i; break; }
-        }
-        const leg = routeLegs[currentLegIdx];
-        showLeg(leg.label);
-        vehicleEl.querySelector('.gmap-icon').textContent = leg.type === 'flight' ? '✈️' : '🚂';
+        // Leg info
+        const legIdx = getLeg(idx);
+        const meta = legMeta[legIdx];
+        showLeg(meta.label);
+        vehicleEl.querySelector('.gmap-icon').textContent = meta.type === 'flight' ? '✈️' : '🚂';
 
         // Move vehicle
         marker.setLngLat(pos);
 
-        // Rotate toward travel direction
-        const lookAhead = Math.min(idx + 5, total - 1);
-        const angle = angleDeg(pt, coords[lookAhead]);
-        vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angle}deg)`;
+        // Rotate
+        const ahead = Math.min(idx + 8, total - 1);
+        vehicleEl.querySelector('.gmap-icon').style.transform = `rotate(${angleDeg(pt, coords[ahead])}deg)`;
 
-        // Camera follow (throttled)
-        if (!this.lastCam || ts - this.lastCam > 800) {
-            this.lastCam = ts;
-            const camAhead = Math.min(idx + 15, total - 1);
+        // Camera (throttled)
+        if (ts - lastCamTime > 800) {
+            lastCamTime = ts;
+            const camAhead = Math.min(idx + 20, total - 1);
             const bearing = angleDeg(pos, coords[camAhead]);
-            const isFlight = leg.type === 'flight';
+            const isFlight = meta.type === 'flight';
             map.easeTo({
                 center: pos,
-                zoom: isFlight ? lerp(3, 5, progress * 3) : 9,
+                zoom: isFlight ? lerp(3, 5, (idx / legBounds[1])) : 10,
                 pitch: isFlight ? 30 : 50,
-                bearing: bearing * 0.25,
+                bearing: bearing * 0.2,
                 duration: 1000,
                 easing: t => t * (2 - t)
             });
@@ -275,30 +174,24 @@ function animateFlyAlong(coords) {
         }
     }
 
-    // Start
     map.flyTo({ center: coords[0], zoom: 4, pitch: 30, bearing: 30, duration: 2000 });
     setTimeout(() => requestAnimationFrame(animate), 2500);
 
-    // Replay
     document.getElementById('replay-btn').onclick = () => {
-        marker.setLngLat(coords[0]);
-        marker.addTo(map);
-        start = null;
-        currentLegIdx = 0;
+        marker.setLngLat(coords[0]).addTo(map);
+        start = null; lastCamTime = 0;
         progressBar.style.width = '0%';
         map.flyTo({ center: coords[0], zoom: 4, pitch: 30, bearing: 30, duration: 1500 });
         setTimeout(() => requestAnimationFrame(animate), 2000);
     };
 }
 
-// --- Controls ---
 document.getElementById('fullview-btn').addEventListener('click', () => {
     const bounds = new mapboxgl.LngLatBounds();
     destinations.forEach(d => bounds.extend([d.lng, d.lat]));
     map.fitBounds(bounds, { padding: 60, pitch: 30, bearing: 0, duration: 2000 });
 });
 
-// --- Scroll ---
 const scrollObs = new IntersectionObserver((entries) => {
     entries.forEach(e => {
         if (e.isIntersecting) {
