@@ -3,63 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Europe Adventure 2026</title>
+    <title>Venice → Lucerne | Gotthard Panorama Express</title>
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; }
+        #map { width: 100%; height: 100vh; }
+        .mapboxgl-canvas { outline: none; }
+        .city-marker-3d { text-align: center; cursor: pointer; }
+        .marker-dot-3d { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 3px 12px rgba(0,0,0,0.3); border: 3px solid #fff; margin: 0 auto; }
+        .marker-name-3d { font-size: 0.75rem; font-weight: 700; color: #333; background: #fff; padding: 3px 10px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); margin-top: 4px; display: inline-block; }
+        .nav-icon { font-size: 1.8rem; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); pointer-events: none; z-index: 2000; }
+        #start-btn { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 1000; background: #1976D2; color: #fff; border: none; padding: 14px 32px; border-radius: 30px; font-size: 1rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 20px rgba(25,118,210,0.4); transition: all 0.2s; }
+        #start-btn:hover { background: #1565C0; transform: translateX(-50%) scale(1.05); }
+    </style>
 </head>
 <body>
-
-<section class="hero">
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-        <h1>Europe 2026</h1>
-        <p class="hero-subtitle">Austin → Venice → Lucerne → Lauterbrunnen → Paris → Bruges → Amsterdam</p>
-        <div class="scroll-indicator"><span>Scroll to explore</span><div class="scroll-arrow">↓</div></div>
-    </div>
-</section>
-
-<section class="map-section">
     <div id="map"></div>
-    <div class="map-controls">
-        <button id="fullview-btn" class="control-btn">🗺️ Full Route</button>
-    </div>
-</section>
-
-<div class="destinations">
-    <section class="destination" data-index="0">
-        <div class="dest-image"><img src="https://images.unsplash.com/photo-1531218150217-54595bc2b934?w=800&q=80" alt="Austin" loading="lazy"><div class="dest-badge start">Start</div></div>
-        <div class="dest-info"><h2>Austin, Texas</h2><div class="dest-dates">📅 Departure Day</div><p>Where it all begins. Leave the Texas heat behind and head east across the Atlantic.</p><div class="dest-highlights"><span class="tag">✈️ Departure</span><span class="tag">🤠 Home Base</span></div></div>
-    </section>
-    <section class="destination" data-index="1">
-        <div class="dest-image"><img src="https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&q=80" alt="Venice" loading="lazy"><div class="dest-badge">Stop 1</div></div>
-        <div class="dest-info"><h2>Venice, Italy</h2><div class="dest-dates">📅 Dates TBD</div><p>Floating city of canals, gondolas, and timeless beauty.</p><div class="dest-highlights"><span class="tag">🚣 Grand Canal</span><span class="tag">⛪ St. Mark's</span><span class="tag">🎭 Rialto</span><span class="tag">🍝 Cicchetti</span></div></div>
-    </section>
-    <section class="destination" data-index="2">
-        <div class="dest-image"><img src="https://images.unsplash.com/photo-1527668752968-14dc70a27c95?w=800&q=80" alt="Lucerne" loading="lazy"><div class="dest-badge">Stop 2</div></div>
-        <div class="dest-info"><h2>Lucerne, Switzerland</h2><div class="dest-dates">📅 Dates TBD</div><p>Postcard-perfect Swiss city framed by snow-capped mountains.</p><div class="dest-highlights"><span class="tag">🌉 Chapel Bridge</span><span class="tag">🏔️ Mt. Pilatus</span><span class="tag">🏞️ Lake Lucerne</span><span class="tag">🍫 Chocolate</span></div></div>
-    </section>
-    <section class="destination" data-index="3">
-        <div class="dest-image"><img src="https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800&q=80" alt="Lauterbrunnen" loading="lazy"><div class="dest-badge">Stop 3</div></div>
-        <div class="dest-info"><h2>Lauterbrunnen, Switzerland</h2><div class="dest-dates">📅 Dates TBD</div><p>The valley of 72 waterfalls. Tolkien's Rivendell.</p><div class="dest-highlights"><span class="tag">💧 Staubbach Falls</span><span class="tag">🚠 Schilthorn</span><span class="tag">🚂 Jungfraujoch</span><span class="tag">🥾 Hikes</span></div></div>
-    </section>
-    <section class="destination" data-index="4">
-        <div class="dest-image"><img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80" alt="Paris" loading="lazy"><div class="dest-badge">Stop 4</div></div>
-        <div class="dest-info"><h2>Paris, France</h2><div class="dest-dates">📅 Dates TBD</div><p>The City of Light. Croissants, Eiffel Tower, Montmartre.</p><div class="dest-highlights"><span class="tag">🗼 Eiffel Tower</span><span class="tag">🎨 Louvre</span><span class="tag">🥐 Le Marais</span><span class="tag">⛪ Sacré-Cœur</span></div></div>
-    </section>
-    <section class="destination" data-index="5">
-        <div class="dest-image"><img src="https://images.unsplash.com/photo-1491557345352-5929e343eb89?w=800&q=80" alt="Bruges" loading="lazy"><div class="dest-badge">Stop 5</div></div>
-        <div class="dest-info"><h2>Bruges, Belgium</h2><div class="dest-dates">📅 Dates TBD</div><p>Medieval fairytale. Cobblestones, canals, chocolate, waffles.</p><div class="dest-highlights"><span class="tag">🏰 Belfry</span><span class="tag">🚤 Canal Cruise</span><span class="tag">🍫 Chocolate</span><span class="tag">🧇 Waffles</span></div></div>
-    </section>
-    <section class="destination" data-index="6">
-        <div class="dest-image"><img src="https://images.unsplash.com/photo-1534351590666-13e3e96b5571?w=800&q=80" alt="Amsterdam" loading="lazy"><div class="dest-badge final">Final Stop</div></div>
-        <div class="dest-info"><h2>Amsterdam, Netherlands</h2><div class="dest-dates">📅 Dates TBD</div><p>Canals, bikes, and masterpieces. The perfect finale.</p><div class="dest-highlights"><span class="tag">🎨 Van Gogh</span><span class="tag">🚲 Canal Ring</span><span class="tag">🏠 Anne Frank</span><span class="tag">🌷 Vondelpark</span></div></div>
-    </section>
-</div>
-
-<footer><p>✈️ 7 destinations · 5 countries · Austin to Amsterdam · One epic adventure</p></footer>
-<script src="config.js"></script>
-<script src="app.js"></script>
+    <button id="start-btn">▶ Start Journey</button>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
