@@ -1,63 +1,78 @@
 const destinations = [
-    { name: "Austin", lat: 30.2672, lng: -97.7431 },
-    { name: "Venice", lat: 45.4408, lng: 12.3155 },
-    { name: "Lucerne", lat: 47.0502, lng: 8.3093 },
-    { name: "Lauterbrunnen", lat: 46.5936, lng: 7.9091 },
-    { name: "Paris", lat: 48.8566, lng: 2.3522 },
-    { name: "Bruges", lat: 51.2093, lng: 3.2247 },
-    { name: "Amsterdam", lat: 52.3676, lng: 4.9041 }
+    { name: "Austin", lat: 30.2672, lng: -97.7431, emoji: "✈️" },
+    { name: "Venice", lat: 45.4408, lng: 12.3155, emoji: "🚣" },
+    { name: "Lucerne", lat: 47.0502, lng: 8.3093, emoji: "🏔️" },
+    { name: "Lauterbrunnen", lat: 46.5936, lng: 7.9091, emoji: "💧" },
+    { name: "Paris", lat: 48.8566, lng: 2.3522, emoji: "🗼" },
+    { name: "Bruges", lat: 51.2093, lng: 3.2247, emoji: "🏰" },
+    { name: "Amsterdam", lat: 52.3676, lng: 4.9041, emoji: "🚲" }
 ];
 
-// --- Map Setup ---
-// Start zoomed out to show Austin + Europe, then zoom to Europe
+// --- Map Setup (fit all destinations) ---
 const map = L.map('map', {
     zoomControl: false,
-    scrollWheelZoom: false,
+    scrollWheelZoom: true,
     dragging: true,
     attributionControl: false
-}).setView([40, -20], 3);
+});
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+// Light/white map tiles
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 18
 }).addTo(map);
 
-// --- Markers ---
-const markers = destinations.map((d) => {
-    return L.marker([d.lat, d.lng], {
-        icon: L.divIcon({ className: 'custom-marker', iconSize: [16, 16] })
-    }).addTo(map).bindPopup(`<b>${d.name}</b>`);
+// Fit map to show ALL destinations
+const bounds = L.latLngBounds(destinations.map(d => [d.lat, d.lng]));
+map.fitBounds(bounds, { padding: [40, 40] });
+
+// --- Markers with city labels ---
+const markers = destinations.map((d, i) => {
+    const isFirst = i === 0;
+    const isLast = i === destinations.length - 1;
+    const label = isFirst ? 'Start' : isLast ? 'End' : `${i}`;
+
+    const marker = L.marker([d.lat, d.lng], {
+        icon: L.divIcon({
+            className: 'city-marker',
+            html: `<div class="marker-pin">${d.emoji}</div><div class="marker-label">${d.name}</div>`,
+            iconSize: [80, 50],
+            iconAnchor: [40, 45]
+        })
+    }).addTo(map);
+
+    marker.on('click', () => {
+        highlightMarker(i);
+        const el = document.querySelector(`.destination[data-index="${i}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    return marker;
 });
 
-// --- Animated Route ---
+// --- Animated Route Line ---
 const routeCoords = destinations.map(d => [d.lat, d.lng]);
-const routeLine = L.polyline([], { color: '#c9a84c', weight: 3, opacity: 0.8, dashArray: '8 12' }).addTo(map);
+const routeLine = L.polyline([], {
+    color: '#c9a84c',
+    weight: 3,
+    opacity: 0.9,
+    dashArray: '10 6'
+}).addTo(map);
 
-// For the transatlantic leg (Austin→Venice), draw a curved great-circle-ish path
 function interpolatePoints(start, end, steps) {
     const points = [];
     for (let s = 0; s <= steps; s++) {
         const t = s / steps;
-        points.push([
-            start[0] + (end[0] - start[0]) * t,
-            start[1] + (end[1] - start[1]) * t
-        ]);
+        points.push([start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t]);
     }
     return points;
 }
 
-function buildFullRoute() {
+function animateRoute() {
     const allPoints = [];
     for (let i = 0; i < routeCoords.length - 1; i++) {
-        // More points for the long Austin→Venice leg
         const steps = i === 0 ? 40 : 15;
-        const seg = interpolatePoints(routeCoords[i], routeCoords[i + 1], steps);
-        allPoints.push(...seg);
+        allPoints.push(...interpolatePoints(routeCoords[i], routeCoords[i + 1], steps));
     }
-    return allPoints;
-}
-
-function animateRoute() {
-    const allPoints = buildFullRoute();
     let step = 0;
     function draw() {
         if (step < allPoints.length) {
@@ -69,7 +84,16 @@ function animateRoute() {
     draw();
 }
 
-// --- Scroll Animations ---
+// --- Scroll: highlight marker + fly to city ---
+function highlightMarker(activeIdx) {
+    document.querySelectorAll('.city-marker').forEach((el, i) => {
+        el.classList.toggle('active', i === activeIdx);
+    });
+    const d = destinations[activeIdx];
+    const zoom = activeIdx === 0 ? 5 : 9;
+    map.flyTo([d.lat, d.lng], zoom, { duration: 1.2 });
+}
+
 const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -82,18 +106,7 @@ const observer = new IntersectionObserver((entries) => {
 
 document.querySelectorAll('.destination').forEach(el => observer.observe(el));
 
-function highlightMarker(activeIdx) {
-    markers.forEach((m, i) => {
-        const el = m.getElement();
-        if (el) el.classList.toggle('active', i === activeIdx);
-    });
-    const d = destinations[activeIdx];
-    // Zoom level: wide for Austin, closer for Europe stops
-    const zoom = activeIdx === 0 ? 5 : 8;
-    map.flyTo([d.lat, d.lng], zoom, { duration: 1.2 });
-}
-
-// --- Start route animation when map is visible ---
+// --- Animate route when map becomes visible ---
 const mapObserver = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
         animateRoute();
@@ -101,3 +114,13 @@ const mapObserver = new IntersectionObserver((entries) => {
     }
 }, { threshold: 0.3 });
 mapObserver.observe(document.getElementById('map'));
+
+// --- Reset to full view when scrolling back to map ---
+const mapSection = document.querySelector('.map-section');
+const mapResetObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && entries[0].intersectionRatio > 0.8) {
+        map.flyToBounds(bounds, { padding: [40, 40], duration: 1 });
+        document.querySelectorAll('.city-marker').forEach(el => el.classList.remove('active'));
+    }
+}, { threshold: 0.8 });
+mapResetObserver.observe(mapSection);
