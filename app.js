@@ -1,5 +1,4 @@
 const destinations = [
-    { name: "Austin", lat: 30.2672, lng: -97.7431, emoji: "✈️", color: "#4CAF50" },
     { name: "Venice", lat: 45.4408, lng: 12.3155, emoji: "🚣", color: "#2196F3" },
     { name: "Lucerne", lat: 47.0502, lng: 8.3093, emoji: "🏔️", color: "#FF9800" },
     { name: "Lauterbrunnen", lat: 46.5936, lng: 7.9091, emoji: "💧", color: "#00BCD4" },
@@ -34,34 +33,15 @@ destinations.forEach((d, i) => {
 // Route lines connecting destinations
 for (let i = 0; i < destinations.length - 1; i++) {
     const from = destinations[i], to = destinations[i + 1];
-    const isFlight = i === 0;
 
-    // Build path
-    let path;
-    if (isFlight) {
-        // Arc for flight
-        path = [];
-        for (let s = 0; s <= 50; s++) {
-            const t = s / 50;
-            path.push([
-                from.lat + (to.lat - from.lat) * t + Math.sin(t * Math.PI) * 8,
-                from.lng + (to.lng - from.lng) * t
-            ]);
-        }
-    } else {
-        path = [[from.lat, from.lng], [to.lat, to.lng]];
-    }
-
-    L.polyline(path, {
+    L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
         color: to.color,
-        weight: isFlight ? 2.5 : 3.5,
-        opacity: 0.7,
-        dashArray: isFlight ? '8 8' : null
+        weight: 3.5,
+        opacity: 0.7
     }).addTo(map);
 
     // Arrow at midpoint
-    const midIdx = Math.floor(path.length / 2);
-    const mid = isFlight ? path[midIdx] : [(from.lat + to.lat) / 2, (from.lng + to.lng) / 2];
+    const mid = [(from.lat + to.lat) / 2, (from.lng + to.lng) / 2];
     const angle = Math.atan2(to.lng - from.lng, to.lat - from.lat) * 180 / Math.PI;
 
     L.marker(mid, {
@@ -81,7 +61,7 @@ const observer = new IntersectionObserver((entries) => {
             const idx = parseInt(entry.target.dataset.index);
             if (!isNaN(idx)) {
                 const d = destinations[idx];
-                map.flyTo([d.lat, d.lng], idx === 0 ? 5 : 10, { duration: 1.2 });
+                map.flyTo([d.lat, d.lng], 10, { duration: 1.2 });
             }
         }
     });
