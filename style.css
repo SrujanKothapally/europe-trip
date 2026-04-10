@@ -96,7 +96,8 @@ body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #e0e0e0; ov
     text-align: center;
     line-height: 1.4;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    white-space: nowrap;
+    max-width: 250px;
+    white-space: normal;
 }
 .connector-label small {
     font-weight: 500; color: #888; font-size: 0.62rem;
