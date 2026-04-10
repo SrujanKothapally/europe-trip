@@ -1,7 +1,7 @@
 const destinations = [
     { name: "Venice", lat: 45.4408, lng: 12.3155, emoji: "🚣", color: "#2196F3" },
-    { name: "Lucerne", lat: 47.0502, lng: 8.3093, emoji: "🏔️", color: "#FF9800" },
-    { name: "Lauterbrunnen", lat: 46.5936, lng: 7.9091, emoji: "💧", color: "#00BCD4" },
+    { name: "Lugano", lat: 46.0037, lng: 8.9511, emoji: "🇨🇭", color: "#FF9800" },
+    { name: "Wengen", lat: 46.6083, lng: 7.9222, emoji: "⛷️", color: "#00BCD4" },
     { name: "Paris", lat: 48.8566, lng: 2.3522, emoji: "🗼", color: "#E91E63" },
     { name: "Bruges", lat: 51.2093, lng: 3.2247, emoji: "🏰", color: "#9C27B0" },
     { name: "Amsterdam", lat: 52.3676, lng: 4.9041, emoji: "🚲", color: "#FF5722" }
